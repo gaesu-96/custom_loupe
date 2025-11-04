@@ -6,4 +6,4 @@ deepspeed
 scikit-learn
 evaluate
 timm
-transformers
+transformers==4.41.0

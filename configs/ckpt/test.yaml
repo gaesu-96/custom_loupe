@@ -1,5 +1,5 @@
 defaults:
-  - cls_seg
+  - cls
   - _self_
   
 # list of checkpoints to load, the latter will override the former
