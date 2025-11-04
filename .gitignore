@@ -76,7 +76,6 @@ docs/_build/
 target/
 
 # Jupyter Notebook
-.ipynb_checkpoints
 
 # IPython
 profile_default/
@@ -138,7 +137,6 @@ dmypy.json
 cython_debug/
 
 debug.ipynb
-pretrained_weights/
 outputs/
 results/
 checkpoints/
