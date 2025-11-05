@@ -65,18 +65,6 @@ class LitModel(pl.LightningModule):
         labels: Optional[torch.Tensor] = None,
         **kwargs,
     ) -> LoupeUniversalOutput:
-        """
-        Forward pass for the model.
-
-        Args:
-            pixel_values (torch.Tensor): Input images with shape (N, C, H, W).
-            mask_labels (torch.Tensor): Input masks with shape (N, H, W).
-            class_labels (torch.LongTensor): Labels with shape (N, 0 or 1). If the ith image is forgery, class_labels[i] == tensor([1]),
-                else class_labels[i] == tensor([]).
-            patch_labels (Optional[torch.Tensor], optional): Patch labels with shape (N, num_patches, num_patches).
-                Only used if config.enable_patch_cls is True. Defaults to None.
-            labels (Optional[torch.Tensor], optional): Labels with shape (N,), which is used to classify the image.
-        """
         return self.loupe(
             pixel_values=pixel_values,
             mask_labels=mask_labels,
@@ -98,14 +86,12 @@ class LitModel(pl.LightningModule):
 
         for key, value in loss_dict.items():
             is_auxiliary_loss = re.search(r"_\d+$", key) is not None
-            # hide auxiliary loss from mask2former in the progress bar
             self.log(key, value, prog_bar=not is_auxiliary_loss, sync_dist=True)
 
         return outputs.loss
 
     def configure_optimizers(self):
         def filter_decay_params(param_dict, **common_args):
-            """filter parameters for optimizer, separate parameters by adding weight_decay or not"""
             non_decay_names = ["bias"]
             non_decay = [
                 {
@@ -136,12 +122,10 @@ class LitModel(pl.LightningModule):
             return [*non_decay, *decay]
 
         def set_hparam(param_dict, pattern: str, **common_args):
-            """set hparams for params that contains the pattern, and return the remaining param dict"""
             selected_params = {n: p for n, p in param_dict.items() if pattern in n}
             pe_optim_groups = filter_decay_params(selected_params, **common_args)
             optim_groups.extend(pe_optim_groups)
 
-            # filter out the parameters in selected_params from param_dict
             return {
                 n: p for n, p in param_dict.items() if n not in selected_params.keys()
             }
@@ -190,6 +174,7 @@ class LitModel(pl.LightningModule):
             raise ValueError(
                 f"the warm_steps should be int or float, but got {type(warmup_steps)}"
             )
+
         if self.cfg.hparams.scheduler == "cosine":
             scheduler = get_cosine_schedule_with_warmup(
                 optimizer,
@@ -207,16 +192,19 @@ class LitModel(pl.LightningModule):
                     f"the decay_steps should be int or float, but got {type(decay_steps)}"
                 )
 
+            stable_steps = int(0.1 * step_batches)  # 전체 step의 10%를 stable step으로 사용
+
             scheduler = get_wsd_schedule(
                 optimizer,
                 num_warmup_steps=warm_steps,
                 num_decay_steps=decay_steps,
-                num_training_steps=step_batches,
+                num_stable_steps=stable_steps,
             )
         else:
             raise ValueError(
                 f"the scheduler should be cosine or wsd, but got {self.cfg.hparams.scheduler}"
             )
+
         return {
             "optimizer": optimizer,
             "lr_scheduler": {"scheduler": scheduler, "interval": "step"},
@@ -238,9 +226,7 @@ class LitModel(pl.LightningModule):
                 }
             )
         if outputs.loss_dict["seg"] is not None:
-            target_sizes = [
-                (mask.shape[0], mask.shape[1]) for mask in masks
-            ]  #  (H_i, W_i)
+            target_sizes = [(mask.shape[0], mask.shape[1]) for mask in masks]
             val_output.update(
                 {
                     "val_seg_loss": outputs.loss_dict["seg"]["loss"],

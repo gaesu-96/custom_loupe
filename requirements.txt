@@ -7,3 +7,11 @@ scikit-learn
 evaluate
 timm
 transformers==4.41.0
+
+
+pytorch-lightning==2.1.2
+deepspeed==0.18.1
+safetensors>=0.4.1
+omegaconf==2.3.0
+loguru==0.7.0
+Pillow==10.0.0
