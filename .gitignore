@@ -143,4 +143,4 @@ checkpoints/
 pred_outputs/
 pred_output.tar.gzpretrained_weights/
 
-pretrained_weights
+pretrained_weights/
